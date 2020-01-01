@@ -1,0 +1,205 @@
+---
+title: "Analysis of Car Performance"
+output: pdf_document
+geometry: margin = 2cm
+---
+
+### EXECUTIVE SUMMARY ### 
+
+The aim of this project was to answer 2 questions: 
+(1) Is an automatic or manual transmission better for miles per gallon (MPG)? 
+(2) Quantify the MPG difference between automatic and manual transmissions. 
+
+To answer these questions, a regression analysis was conducted on a dataset which contains data on the fuel consumption and other aspects of automobile design and performance for 32 automobile models from 1973 to 1974. The analysis assumed that MPG ($Y$) is a function of various automobile features ($X$).
+
+The regression analysis showed that manual transmission automobiles had a higher MPG, holding weight, displacement, and acceleration (as measured by qsec) constant. Manual transmission automobiles had 23.24 MPG on average, while automatic transmission automobiles had only 9.20 MPG on average. 
+
+### INTRODUCTION ### 
+
+```{r loading packages and data, include=FALSE}
+library(tidyverse)
+library(car)
+library(broom)
+data("mtcars")
+mtcars$cyl <- as.factor(mtcars$cyl)
+mtcars$vs <- as.factor(mtcars$vs)
+mtcars$am <- as.factor(mtcars$am)
+mtcars$gear <- as.factor(mtcars$gear)
+mtcars$carb <- as.factor(mtcars$carb)
+```
+
+This analysis aimed to explore the relationship between a set of automobile features and MPG. Specifically, the goal was to answer the following questions: (1) Is an automatic or manual transmission better for MPG? (2) Quantify the MPG difference between automatic and manual transmissions.
+
+The mtcars dataset was used in this analysis. This dataset contained 32 observations of 11 automobile features, taken from automobile models from 1973 to 1974. In this case, the dependent variable is MPG, or Miles per Gallon. This is a measure of fuel efficiency. The explanatory variable of interest is AM, a binary variable which signals whether an automobile has automatic (am = 0) or manual (am = 1) transmission. A visual examination of the data suggests that manual transmission automobiles have a higher MPG (See Appendix, Figure 1). 
+
+The remaining explanatory variables are: cyl (number of cylinders), disp (displacement), hp (gross horsepower),  drat (rear axle ratio), wt (weight), qsec (quarter mile per second), vs (engine cylinder configuration); gear (number of forward gears), and carb (number of carburetors). Exploratory data analysis suggests that: 
+
+1) As number of cylinders increased, MPG decreased (See Appendix, Fig. 2). 
+2) MPG has a negative relationship with disp (Appendix Fig. 3), hp (Appendix, Fig. 4) and wt (Appendix, Fig. 5). 
+3) MPG has a positive relationship with drat (Appendix, Fig. 6) and qsec (Appendix, Fig. 7). 
+4) Engines with a straight line configuration (vs = 1) have higher MPGs (Appendix, Fig. 8). 
+5) Automobiles with 4 gears have the highest MPGs (Appendix, Fig. 9). 
+6) MPG decreased as the number of carburetors increased (Appendix, Fig. 10). 
+
+However, the possibility that there is an interaction effect between am and another explanatory variable cannot be disregarded. In fact, interaction plots hinted at the presence of interaction effects between am and cyl (Appendix, Fig. 11), hp (Appendix, Fig. 12), qsec (Appendix, Fig. 13), vs (Appendix, Fig. 14), and carb (Appendix, Fig. 15). 
+
+As part of the exploratory data analysis, the following variables were converted from numeric to factor variables: am, cyl, vs, gear and carb. 
+
+### MODELS AND ANALYSIS ### 
+
+As an initial analysis, linear models were estimated using each of the explanatory variables. While all of the models had significant estimates, the r-squared values ranged from 0.18 (for qsec) to 0.75 (for wt). (See Appendix)
+
+Next, the possibility of an interaction between am and another variable should be addressed. The analysis of variance method was used to determine possible interaction effects. In this case, there were 2 significant interactions: (1) am with wt, and (2) am with disp. (See Appendix)
+
+After this, the regression model was selected using the nested models approach. Specifically, nested likelihood ratio tests were used to determine whether the added variables were necessary for the model. Thus, mpg was first regressed on am, and thereafter adding an additional term. The first additional term to be considered was the interaction between am and wt, followed by the interaction between am and disp. Thereafter, each of the remaining variables were additively included in the model. 
+
+The ANOVA method showed that the only necessary terms for the model were am, wt, disp, qsec, and the interaction term for am and wt. The resulting model is:  
+
+```{r lm model, echo=TRUE}
+model <- lm(mpg ~ am * wt  + disp + qsec, data = mtcars)
+tidy(model)
+```
+
+The model generated an r-squared of 0.876, which implies that the model is able to account for almost 88% of the variation in the data. The coefficients for am1, wt, qsec, and the interaction term were all statistically significant.
+
+Based on this model, manual transmission automobiles have a higher mean MPG than automatic transmission automobiles, holding weight, displacement, and acceleration as measured by qsec constant. The average MPG of automatic transmission automobiles was 9.20 (with a 95% confidence interval of -5.44 to 23.83), while manual transmission automobiles was 23.24 (with a 95% confidence interval of 8.00 to 38.46). 
+
+Every additional 1000lbs of weight, however, lowered the average MPG by 3.06 (with a 95% confidence interval of -5.32 to -0.79), holding the other variables constant. For manual transmission automobiles, there is an additional decrease of 4.10 for every 1000lbs of additional weight. MPG increased by 1.05 (with a 95% confidence interval of 0.32 to 1.78) for every unit increase in acceleration as measured by qsec, holding the other variables constant. 
+
+The residual plot below shows a random pattern, suggesting a good fit of the linear model. 
+
+```{r residual plot, echo=FALSE, fig.height=2, fig.width=3}
+mtcars$predicted <- predict(model)
+mtcars$residuals <- residuals(model)
+
+mtcars %>% 
+    ggplot(aes(predicted, residuals)) + geom_point() + 
+    geom_hline(yintercept = 0, linetype = "dotted") + 
+    labs(title = "Residuals", x = "Predicted Values",
+         y = "Residuals")
+```
+
+### SUMMARY ### 
+
+In order to determine whether automatic of manual transmission was better for MPG, a regression analysis using the mtcars dataset was conducted. Based on the results of the analysis, manual transmission automobiles had on average a higher MPG than automatic transmission automobiles, holding other variables constant. 
+
+This conclusion however is limited to the scope of this analysis, i.e., to the automobile models included in the dataset. 
+
+### APPENDIX ### 
+
+EXPLORATORY DATA ANALYSIS PLOTS
+
+```{r mpg by am cyl boxplot, echo=FALSE, fig.height=2, fig.width=3}
+mtcars %>% 
+    ggplot(aes(am, mpg)) + geom_boxplot() + 
+    labs(title = "Figure 1", x = "Transmission (0 = Automatic, 1 = Manual)", 
+         y = "MPG")
+mtcars %>% 
+    ggplot(aes(cyl, mpg)) + geom_boxplot() + 
+    labs(title = "Figure 2", x = "Number of Cylinders", 
+         y = "MPG")
+```
+
+```{r mpg by disp hp, echo=FALSE, fig.height=2, fig.width=3}
+mtcars %>% 
+    ggplot(aes(disp, mpg)) + geom_point() + 
+    labs(title = "Figure 3", x = "Displacement", 
+         y = "MPG")
+mtcars %>% 
+    ggplot(aes(hp, mpg)) + geom_point() + 
+    labs(title = "Figure 4", x = "Horsepower", 
+         y = "MPG")
+```
+
+```{r mpg by wt drat, echo=FALSE, fig.height=2, fig.width=3}
+mtcars %>% 
+    ggplot(aes(wt, mpg)) + geom_point() + 
+    labs(title = "Figure 5", x = "Weight", 
+         y = "MPG")
+mtcars %>% 
+    ggplot(aes(drat, mpg)) + geom_point() + 
+    labs(title = "Figure 6", x = "Rear Axle Ratio (drat)", 
+         y = "MPG")
+```
+
+```{r mpg by qsec vs, echo=FALSE, fig.height=2, fig.width=3}
+mtcars %>% 
+    ggplot(aes(qsec, mpg)) + geom_point() + 
+    labs(title = "Figure 7", x = "Acceleration (qsec)", 
+         y = "MPG") 
+mtcars %>% 
+    ggplot(aes(vs, mpg)) + geom_boxplot() + 
+    labs(title = "Figure 8", x = "Engine Configuration (vs)", y = "MPG")
+```
+
+```{r mpg by gears carb, echo=FALSE, fig.height=2, fig.width=3}
+mtcars %>% 
+    ggplot(aes(gear, mpg)) + geom_boxplot() + 
+    labs(title = "Figure 9", x = "Number of Gears", y = "MPG")
+mtcars %>% 
+    ggplot(aes(carb, mpg)) + geom_boxplot() + 
+    labs(title = "Figure 10", x = "Number of Carburetors", y = "MPG")
+```
+
+CHECKING FOR INTERACTION VARIABLES
+
+```{r cyl hp interact, echo=FALSE, fig.height=3, fig.width=3}
+interaction.plot(mtcars$am, mtcars$cyl, mtcars$mpg, 
+                 xlab = "am", 
+                 ylab = "mpg", 
+                 main = "Figure 11",
+                 legend = FALSE) ## yes
+interaction.plot(mtcars$am, mtcars$hp, mtcars$mpg,
+                 xlab = "am",
+                 ylab = "hp", 
+                 main = "Figure 12", 
+                 legend = FALSE)
+```
+
+```{r qsec vs interact, echo=FALSE, fig.height=3, fig.width=3}
+interaction.plot(mtcars$am, mtcars$qsec, mtcars$mpg, 
+                 xlab = "am", 
+                 ylab = "qsec", 
+                 main = "Figure 13", 
+                 legend = FALSE) ## yes
+interaction.plot(mtcars$am, mtcars$vs, mtcars$mpg, 
+                 xlab = "am", 
+                 ylab = "vs", 
+                 main = "Figure 14", 
+                 legend = FALSE) ## almost parallel
+```
+
+```{r carb interact, echo=FALSE, fig.height=3, fig.width=3}
+interaction.plot(mtcars$am, mtcars$carb, mtcars$mpg, 
+                 xlab = "am", 
+                 ylab = "carb", 
+                 main = "Figure 15", 
+                 legend = FALSE) ## yes
+```
+
+CHECKING R-SQUARED, INDIVIDUAL MODELS
+
+```{r individual models, echo=FALSE}
+options(pillar.sigfig = 6)
+cyl <- summary(lm(mpg~cyl, data = mtcars))$r.squared # sig., R2 = 0.7325
+disp <- summary(lm(mpg~disp, data = mtcars))$r.squared # sig., R2 = 0.7183
+hp <- summary(lm(mpg~hp, data = mtcars))$r.squared # sig., R2 = 0.6024 
+drat <- summary(lm(mpg~drat, data = mtcars))$r.squared # sig., R2 = 0.464
+wt <- summary(lm(mpg~wt, data = mtcars))$r.squared # sig., R2 = 0.7528
+qsec <- summary(lm(mpg~qsec, data = mtcars))$r.squared # sig., R2 = 0.1753
+vs <- summary(lm(mpg~vs, data = mtcars))$r.squared #sig., R2 = 0.4409
+am <- summary(lm(mpg~am, data = mtcars))$r.squared # sig., R2 = 0.3598
+gear <- summary(lm(mpg~gear, data = mtcars))$r.squared # sig., R2 = 0.4292
+carb <- summary(lm(mpg~carb, data = mtcars))$r.squared # some sig., R2 = 0.4445
+
+rsquareds <- data.frame(cyl, disp, hp, drat, wt, qsec, vs, am, gear, carb)
+rsquareds <- gather(rsquareds, "Variable", "R-Squared")
+rsquareds
+```
+
+LOOKING FOR INTERACTIONS, ANALYSIS OF VARIANCE
+
+```{r looking for interactions, echo=FALSE}
+summary(aov(mpg ~ wt*am, data = mtcars)) ## int. sig. 
+summary(aov(mpg ~ disp*am, data = mtcars)) ## int. sig. 
+```
